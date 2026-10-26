@@ -23,7 +23,10 @@ struct PanelView: View {
             section("SCREEN") {
                 Picker("Screen", selection: Binding(
                     get: { capture.selectedDisplayID ?? 0 },
-                    set: { capture.selectDisplay($0) }
+                    set: { id in
+                        capture.selectDisplay(id)
+                        if capture.isSharing { overlay.show(on: id, strokes: scribble) }
+                    }
                 )) {
                     ForEach(capture.displays, id: \.displayID) { display in
                         Text(capture.displayName(display)).tag(display.displayID)

@@ -23,8 +23,7 @@ enum ScribbleTool: String, CaseIterable, Identifiable {
     }
 }
 
-struct Stroke: Identifiable {
-    let id = UUID()
+struct Stroke {
     let tool: ScribbleTool
     var points: [CGPoint]
     var finishedAt: Date?

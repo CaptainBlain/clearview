@@ -2,9 +2,13 @@ import CoreVideo
 import QuartzCore
 import ScreenCaptureKit
 
-/// Holds the newest captured frame for the renderer and counts frames per
-/// second. Written on the capture queue, read on the render thread.
-final class FrameStore: @unchecked Sendable {
+/// Receives frames from the stream and keeps the newest one for the renderer,
+/// counting frames per second. Written on the capture queue, read on the
+/// render thread.
+final class FrameReceiver: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
+    let queue = DispatchQueue(label: "clearview.frames", qos: .userInteractive)
+    var onStop: (Error) -> Void = { _ in }
+
     private let lock = NSLock()
     private var latestFrame: CVPixelBuffer?
     private var arrivals: [CFTimeInterval] = []
@@ -22,29 +26,11 @@ final class FrameStore: @unchecked Sendable {
         }
     }
 
-    func push(_ frame: CVPixelBuffer) {
-        lock.withLock {
-            latestFrame = frame
-            let now = CACurrentMediaTime()
-            arrivals.append(now)
-            arrivals.removeAll { now - $0 > 1 }
-        }
-    }
-
     func clear() {
         lock.withLock {
             latestFrame = nil
             arrivals.removeAll()
         }
-    }
-}
-
-final class StreamOutput: NSObject, SCStreamOutput {
-    let queue = DispatchQueue(label: "clearview.frames", qos: .userInteractive)
-    private let frames: FrameStore
-
-    init(frames: FrameStore) {
-        self.frames = frames
     }
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
@@ -55,12 +41,13 @@ final class StreamOutput: NSObject, SCStreamOutput {
               SCFrameStatus(rawValue: rawStatus) == .complete,
               let frame = sampleBuffer.imageBuffer
         else { return }
-        frames.push(frame)
+        lock.withLock {
+            latestFrame = frame
+            let now = CACurrentMediaTime()
+            arrivals.append(now)
+            arrivals.removeAll { now - $0 > 1 }
+        }
     }
-}
-
-final class CaptureStreamDelegate: NSObject, SCStreamDelegate {
-    var onStop: (Error) -> Void = { _ in }
 
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         onStop(error)

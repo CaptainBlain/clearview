@@ -51,7 +51,7 @@ Tests: `xcodebuild test -scheme Clearview -destination 'platform=macOS'`
 | File | Role |
 |---|---|
 | `CaptureModel.swift` | Display and app lists, content filter, stream lifecycle |
-| `FrameStore.swift` | Stream output, newest frame and fps count |
+| `FrameReceiver.swift` | Receives stream frames, keeps the newest, counts fps |
 | `FrameRenderer.swift` | Metal view that draws the newest frame, aspect-fit |
 | `ScribbleStore.swift` | Shared strokes, tools and fading |
 | `StrokesCanvas.swift` | Draws strokes; used by the viewer and the overlay |

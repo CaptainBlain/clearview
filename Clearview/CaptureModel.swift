@@ -23,17 +23,14 @@ final class CaptureModel {
     /// Pixel size of the frames being captured.
     var frameSize: CGSize = .zero
 
-    let frames = FrameStore()
+    let frames = FrameReceiver()
 
     private var content: SCShareableContent?
     private var stream: SCStream?
-    private let output: StreamOutput
-    private let delegate = CaptureStreamDelegate()
     private let ownBundleID = Bundle.main.bundleIdentifier
 
     init() {
-        output = StreamOutput(frames: frames)
-        delegate.onStop = { [weak self] error in
+        frames.onStop = { [weak self] error in
             Task { @MainActor in
                 self?.stream = nil
                 self?.isSharing = false
@@ -89,8 +86,8 @@ final class CaptureModel {
         config.showsCursor = true
 
         do {
-            let stream = SCStream(filter: filter, configuration: config, delegate: delegate)
-            try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: output.queue)
+            let stream = SCStream(filter: filter, configuration: config, delegate: frames)
+            try stream.addStreamOutput(frames, type: .screen, sampleHandlerQueue: frames.queue)
             try await stream.startCapture()
             self.stream = stream
             frameSize = CGSize(width: config.width, height: config.height)

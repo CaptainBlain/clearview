@@ -5,7 +5,7 @@ import SwiftUI
 /// ScreenCaptureKit's IOSurface-backed buffers through a texture cache, so
 /// nothing is copied on the CPU.
 struct FrameView: NSViewRepresentable {
-    let frames: FrameStore
+    let frames: FrameReceiver
 
     func makeCoordinator() -> FrameRenderer {
         FrameRenderer(frames: frames)
@@ -54,13 +54,13 @@ fragment float4 quadFragment(QuadOut in [[stage_in]],
 
 final class FrameRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
-    private let frames: FrameStore
+    private let frames: FrameReceiver
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
     private let sampler: MTLSamplerState
     private var textureCache: CVMetalTextureCache?
 
-    init(frames: FrameStore) {
+    init(frames: FrameReceiver) {
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue(),
               let library = try? device.makeLibrary(source: shaderSource, options: nil)
