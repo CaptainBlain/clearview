@@ -31,7 +31,7 @@ This is the capture, privacy and drawing side only.
 
 ## Run it
 
-Needs macOS 15 or later and Xcode 26.
+Needs macOS 15 or later and Xcode 26 with the Metal toolchain (Xcode offers it, or run `xcodebuild -downloadComponent MetalToolchain`).
 
 ```sh
 brew install xcodegen
@@ -52,7 +52,7 @@ Tests: `xcodebuild test -scheme Clearview -destination 'platform=macOS'`
 |---|---|
 | `CaptureModel.swift` | Display and app lists, content filter, stream lifecycle |
 | `FrameReceiver.swift` | Receives stream frames, keeps the newest, counts fps |
-| `FrameRenderer.swift` | Metal view that draws the newest frame, aspect-fit |
+| `FrameRenderer.swift` / `Shaders.metal` | Metal view and shader that draw the newest frame, aspect-fit |
 | `ScribbleStore.swift` | Shared strokes, tools and fading |
 | `StrokesCanvas.swift` | Draws strokes; used by the viewer and the overlay |
 | `OverlayController.swift` | Transparent window over the shared display |

@@ -25,33 +25,6 @@ struct FrameView: NSViewRepresentable {
     func updateNSView(_ view: MTKView, context: Context) {}
 }
 
-/// The quad shader, compiled at launch so the project builds without the
-/// separate Metal toolchain download. rect is (left, bottom, right, top) in
-/// clip space.
-private let shaderSource = """
-#include <metal_stdlib>
-using namespace metal;
-
-struct QuadOut {
-    float4 position [[position]];
-    float2 uv;
-};
-
-vertex QuadOut quadVertex(uint vid [[vertex_id]], constant float4 &rect [[buffer(0)]]) {
-    float2 uv = float2(vid & 1, vid >> 1);
-    QuadOut out;
-    out.position = float4(mix(rect.x, rect.z, uv.x), mix(rect.w, rect.y, uv.y), 0, 1);
-    out.uv = uv;
-    return out;
-}
-
-fragment float4 quadFragment(QuadOut in [[stage_in]],
-                             texture2d<float> frame [[texture(0)]],
-                             sampler linear [[sampler(0)]]) {
-    return frame.sample(linear, in.uv);
-}
-"""
-
 final class FrameRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     private let frames: FrameReceiver
@@ -63,7 +36,7 @@ final class FrameRenderer: NSObject, MTKViewDelegate {
     init(frames: FrameReceiver) {
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue(),
-              let library = try? device.makeLibrary(source: shaderSource, options: nil)
+              let library = device.makeDefaultLibrary()
         else { fatalError("Metal is unavailable") }
         self.device = device
         self.frames = frames
