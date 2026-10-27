@@ -4,12 +4,24 @@ A small macOS proof of concept for sharp, private screen sharing, built with
 ScreenCaptureKit, Metal and SwiftUI. It runs on one Mac: the "What they see"
 window shows exactly what a teammate on the other end of a call would get.
 
+**Live.** Typing on the shared screen shows up in "What they see" straight away.
+
+![Typing in TextEdit appears live in the What they see window](docs/live-typing.gif)
+
+**Draw.** Pen, arrow and highlighter, mirrored onto the real screen, fading after a few seconds.
+
+![Drawing a pen line, an arrow and a highlight](docs/drawing.gif)
+
+**Hide apps.** Messages, then TextEdit, drop out of the share while they stay open and keep changing.
+
+![Hiding Messages and TextEdit from the share](docs/hide-apps.gif)
+
 ## What it does
 
 - **Share a display at full Retina resolution.** ScreenCaptureKit captures at
   the display's native pixel size (BGRA, sRGB, up to 60 fps). Frames go
-  straight from IOSurface-backed buffers into a Metal texture through a
-  CoreVideo texture cache, with no CPU copy.
+  straight from IOSurface-backed buffers into a Metal texture that wraps the
+  same memory, with no CPU copy.
 - **Hide apps from the share.** Switch off any app in the menu bar panel and
   its windows disappear from the stream at once, without restarting it
   (`SCContentFilter(display:excludingApplications:exceptingWindows:)` plus
