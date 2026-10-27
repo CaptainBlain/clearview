@@ -46,6 +46,26 @@ app. Set your own team in `project.yml` to sign it.
 
 Tests: `xcodebuild test -scheme Clearview -destination 'platform=macOS'`
 
+## How it fits together
+
+Plain SwiftUI with `@Observable` models, which is the pattern Apple's own
+samples use. `CaptureModel` and `ScribbleStore` hold the state and are shared
+through the environment. There is no ViewModel layer: at this size, extra
+layers would add files without adding clarity.
+
+Two paths run through it:
+
+- **Frames.** `SCStream` → `FrameReceiver` (on a background queue, keeps only
+  the newest frame behind a lock) → `FrameRenderer` (Metal, pulls that frame
+  on each display refresh) → `FrameView`. Frames never pass through SwiftUI
+  state, so the views don't re-render 60 times a second.
+- **Drawing.** Drag in `ViewerView` → `ScribbleStore` (points normalised to
+  0…1) → `StrokesCanvas`. The same canvas draws in the viewer and in the
+  overlay window on the real screen, so both sides always match.
+
+In a larger app, the first change would be to put the capture behind a
+protocol, so the models can be tested without a real display.
+
 ## Layout
 
 | File | Role |
