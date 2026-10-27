@@ -2,7 +2,7 @@ import MetalKit
 import SwiftUI
 
 /// Shows the newest captured frame with Metal. Frames come straight from
-/// ScreenCaptureKit's IOSurface-backed buffers through a texture cache, so
+/// ScreenCaptureKit's IOSurface-backed buffers wrapped as a Metal texture, so
 /// nothing is copied on the CPU.
 struct FrameView: NSViewRepresentable {
     let frames: FrameReceiver
@@ -31,7 +31,6 @@ final class FrameRenderer: NSObject, MTKViewDelegate {
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
     private let sampler: MTLSamplerState
-    private var textureCache: CVMetalTextureCache?
 
     init(frames: FrameReceiver) {
         guard let device = MTLCreateSystemDefaultDevice(),
@@ -53,7 +52,6 @@ final class FrameRenderer: NSObject, MTKViewDelegate {
         samplerDescriptor.magFilter = .linear
         sampler = device.makeSamplerState(descriptor: samplerDescriptor)!
 
-        CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
         super.init()
     }
 
@@ -66,12 +64,14 @@ final class FrameRenderer: NSObject, MTKViewDelegate {
               let encoder = commands.makeRenderCommandEncoder(descriptor: pass)
         else { return }
 
-        var cvTexture: CVMetalTexture?
-        if let frame = frames.latest, let textureCache {
+        if let frame = frames.latest,
+           let surface = CVPixelBufferGetIOSurface(frame)?.takeUnretainedValue() {
             let width = CVPixelBufferGetWidth(frame)
             let height = CVPixelBufferGetHeight(frame)
-            CVMetalTextureCacheCreateTextureFromImage(nil, textureCache, frame, nil, .bgra8Unorm, width, height, 0, &cvTexture)
-            if let cvTexture, let texture = CVMetalTextureGetTexture(cvTexture) {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+            descriptor.usage = .shaderRead
+            descriptor.storageMode = .shared
+            if let texture = device.makeTexture(descriptor: descriptor, iosurface: surface, plane: 0) {
                 let drawableSize = view.drawableSize
                 let fit = Geometry.aspectFit(CGSize(width: width, height: height),
                                              in: CGRect(origin: .zero, size: drawableSize))
@@ -85,11 +85,11 @@ final class FrameRenderer: NSObject, MTKViewDelegate {
                 encoder.setFragmentSamplerState(sampler, index: 0)
                 encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             }
+            // Keep the frame's buffer alive until the GPU has finished with it.
+            commands.addCompletedHandler { _ in _ = frame }
         }
         encoder.endEncoding()
         commands.present(drawable)
-        // Keep the CoreVideo texture alive until the GPU has finished with it.
-        commands.addCompletedHandler { _ in _ = cvTexture }
         commands.commit()
     }
 }
